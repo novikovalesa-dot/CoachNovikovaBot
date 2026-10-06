@@ -14,35 +14,7 @@ USERS: Dict[int, Dict[str, Any]] = {}
 BASE_DIR = Path(__file__).resolve().parent
 PREMISES_PDF = BASE_DIR / "assets" / "trebovaniya_SES_pomeshchenie.pdf"
 
-QUESTIONS = [
-    ("format", "Что вы планируете открыть?", [
-        "Детский сад", "Детский центр", "Подготовка к школе", "Продлёнка",
-        "Языковой центр", "Центр развития", "Другое"
-    ]),
-    ("city", "В каком городе вы планируете открытие?", []),
-    ("stage", "На каком этапе вы сейчас?", [
-        "Только идея", "Ищу помещение", "Помещение найдено", "Ремонт",
-        "Набираю персонал", "Готовлю запуск", "Уже работаем"
-    ]),
-    ("premises", "Что с помещением?", [
-        "Нет помещения", "Аренда", "Собственное", "Рассматриваю варианты"
-    ]),
-    ("area", "Какая площадь помещения?", [
-        "До 100 м²", "100–200 м²", "200–300 м²", "Более 300 м²", "Не знаю"
-    ]),
-    ("children", "Сколько детей планируете одновременно?", [
-        "До 20", "20–40", "40–60", "60–100", "Более 100"
-    ]),
-    ("programs", "Программы уже определены?", ["Да", "Частично", "Нет"]),
-    ("finance", "Есть финансовая модель?", ["Да", "Примерная", "Нет"]),
-    ("docs", "Документы подготовлены?", ["Да", "Частично", "Нет", "Не знаю"]),
-    ("launch", "Когда планируете открытие?", [
-        "Менее месяца", "1–3 месяца", "3–6 месяцев", "Более 6 месяцев", "Пока изучаю"
-    ]),
-]
-
 MENU = [
-    ["🚀 Начать диагностику"],
     ["🏢 Проверить помещение", "📑 Документы"],
     [
         {
@@ -115,54 +87,25 @@ async def send_document(chat_id: int, file_path: Path, caption: str = ""):
 
 def state(chat_id: int):
     return USERS.setdefault(chat_id, {
-        "mode": None, "q": 0, "answers": {}, "finance": {}, "f": 0
+        "mode": None, "answers": {}, "finance": {}, "f": 0
     })
 
 
 async def start(chat_id: int):
-    USERS[chat_id] = {"mode": None, "q": 0, "answers": {}, "finance": {}, "f": 0}
+    USERS[chat_id] = {"mode": None, "answers": {}, "finance": {}, "f": 0}
     text = (
         "Здравствуйте! 👋\n\n"
-        "Я — виртуальный помощник <b>Coach Novikova</b> по открытию детских "
-        "центров и детских садов в Казахстане 🇰🇿\n\n"
+        "Я — виртуальный помощник <b>Coach Novikova</b> по открытию детских центров в Казахстане 🇰🇿\n\n"
         "Здесь вы сможете:\n"
         "🏢 разобраться с помещением\n"
         "📑 понять, какие документы нужны\n"
-        "👩‍🏫 сформировать команду\n"
-        "💰 рассчитать бюджет и точку безубыточности\n"
-        "📚 продумать программы\n"
-        "📣 подготовить маркетинг и набор детей\n"
-        "✅ получить персональный план открытия\n\n"
-        "Для начала пройдите короткую диагностику проекта."
+        "💰 рассчитать инвестиции при открытии\n"
+        "📚 рассчитать финансовую модель, расходы и доходы центра\n"
+        "📣 получить чек-лист по маркетингу\n"
+        "✅ получить чек-лист по открытию"
     )
     await send(chat_id, text, MENU)
 
-
-async def ask_question(chat_id: int):
-    s = state(chat_id)
-    idx = s["q"]
-    key, q, options = QUESTIONS[idx]
-    rows = [[x] for x in options] if options else None
-    await send(chat_id, f"<b>Вопрос {idx+1} из {len(QUESTIONS)}</b>\n{q}", rows)
-
-
-async def finish_diagnostic(chat_id: int):
-    s = state(chat_id)
-    a = s["answers"]
-    text = (
-        "✅ <b>Диагностика завершена</b>\n\n"
-        f"📍 Город: {a.get('city','—')}\n"
-        f"🏢 Формат: {a.get('format','—')}\n"
-        f"📐 Площадь: {a.get('area','—')}\n"
-        f"👧 План: {a.get('children','—')} детей\n"
-        f"🚀 Этап: {a.get('stage','—')}\n"
-        f"💰 Финансовая модель: {a.get('finance','—')}\n"
-        f"📑 Документы: {a.get('docs','—')}\n"
-        f"📅 Открытие: {a.get('launch','—')}\n\n"
-        "Теперь можно составить ваш персональный маршрут открытия."
-    )
-    s["mode"] = None
-    await send(chat_id, text, MENU)
 
 
 def plan_text(a):
@@ -191,11 +134,7 @@ def plan_text(a):
 async def handle_menu(chat_id: int, text: str):
     s = state(chat_id)
 
-    if text == "🚀 Начать диагностику":
-        s.update({"mode": "diagnostic", "q": 0, "answers": {}})
-        await ask_question(chat_id)
-
-    elif text == "🏢 Проверить помещение":
+    if text == "🏢 Проверить помещение":
         await send(
             chat_id,
             "🏢 <b>Проверка помещения</b>\n\n"
@@ -303,15 +242,6 @@ async def handle_text(chat_id: int, text: str):
         await start(chat_id)
         return
 
-    if s["mode"] == "diagnostic":
-        key, _, _ = QUESTIONS[s["q"]]
-        s["answers"][key] = text.strip()
-        s["q"] += 1
-        if s["q"] >= len(QUESTIONS):
-            await finish_diagnostic(chat_id)
-        else:
-            await ask_question(chat_id)
-        return
 
     if s["mode"] == "finance":
         key, _ = FINANCE_FIELDS[s["f"]]
