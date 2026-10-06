@@ -44,7 +44,13 @@ QUESTIONS = [
 MENU = [
     ["🚀 Начать диагностику"],
     ["🏢 Проверить помещение", "📑 Документы"],
-    ["💰 Финансовый калькулятор", "👩‍🏫 Персонал"],
+    [
+        {
+            "text": "💰 Финансовый калькулятор открытия",
+            "web_app": {"url": "https://coach-novikova.tilda.ws/open"}
+        },
+        "👩‍🏫 Персонал"
+    ],
     ["📚 Программы", "📣 Маркетинг"],
     ["🗺 Мой план открытия", "💬 Консультация"],
 ]
@@ -69,8 +75,11 @@ FINANCE_FIELDS = [
 
 
 def keyboard(rows):
+    def button(x):
+        return x if isinstance(x, dict) else {"text": x}
+
     return {
-        "keyboard": [[{"text": x} for x in row] for row in rows],
+        "keyboard": [[button(x) for x in row] for row in rows],
         "resize_keyboard": True,
         "one_time_keyboard": False,
     }
@@ -289,7 +298,7 @@ async def handle_menu(chat_id: int, text: str):
         else:
             await send(chat_id, "🗺 <b>Ваш маршрут открытия</b>\n\n" + plan_text(s["answers"]), MENU)
 
-    elif text == "💰 Финансовый калькулятор":
+    elif text in ("💰 Финансовый калькулятор", "💰 Финансовый калькулятор открытия"):
         s.update({"mode": "finance", "finance": {}, "f": 0})
         await send(chat_id, "💰 <b>Финансовый калькулятор</b>\n\n" + FINANCE_FIELDS[0][1])
 
