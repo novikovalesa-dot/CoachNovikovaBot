@@ -1,5 +1,6 @@
 import os
 from typing import Dict, Any
+from pathlib import Path
 
 import httpx
 from fastapi import FastAPI, Request
@@ -10,6 +11,8 @@ BASE_URL = f"https://api.telegram.org/bot{TOKEN}" if TOKEN else ""
 app = FastAPI(title="CoachNovikovaBot")
 
 USERS: Dict[int, Dict[str, Any]] = {}
+BASE_DIR = Path(__file__).resolve().parent
+PREMISES_PDF = BASE_DIR / "assets" / "trebovaniya_SES_pomeshchenie.pdf"
 
 QUESTIONS = [
     ("format", "Что вы планируете открыть?", [
@@ -46,6 +49,12 @@ MENU = [
     ["🗺 Мой план открытия", "💬 Консультация"],
 ]
 
+PREMISES_MENU = [
+    ["✅ Проверить моё помещение"],
+    ["💬 Получить консультацию"],
+    ["⬅️ Главное меню"],
+]
+
 FINANCE_FIELDS = [
     ("rent", "Введите аренду в месяц, тг"),
     ("payroll", "Введите ФОТ в месяц, тг"),
@@ -73,8 +82,27 @@ async def send(chat_id: int, text: str, rows=None):
     payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
     if rows:
         payload["reply_markup"] = keyboard(rows)
-    async with httpx.AsyncClient(timeout=20) as client:
+    async with httpx.AsyncClient(timeout=30) as client:
         await client.post(f"{BASE_URL}/sendMessage", json=payload)
+
+
+async def send_document(chat_id: int, file_path: Path, caption: str = ""):
+    if not BASE_URL or not file_path.exists():
+        return False
+    data = {
+        "chat_id": str(chat_id),
+        "caption": caption,
+        "parse_mode": "HTML",
+    }
+    with file_path.open("rb") as f:
+        files = {"document": (file_path.name, f, "application/pdf")}
+        async with httpx.AsyncClient(timeout=60) as client:
+            response = await client.post(
+                f"{BASE_URL}/sendDocument",
+                data=data,
+                files=files,
+            )
+    return response.status_code == 200
 
 
 def state(chat_id: int):
@@ -163,13 +191,55 @@ async def handle_menu(chat_id: int, text: str):
         await send(
             chat_id,
             "🏢 <b>Проверка помещения</b>\n\n"
-            "До подписания долгосрочной аренды проверьте: назначение и документы на объект, "
-            "площадь и планировку, этажность и выходы, санузлы, инженерные сети, вентиляцию, "
-            "возможность организации питания, безопасность и соответствие формату детей.\n\n"
-            "Для детского сада требования строже, чем для обычного развивающего центра. "
-            "Юридические, санитарные и пожарные требования нужно сверять по действующим НПА РК.",
-            MENU,
+            "Я подготовила краткую презентацию по основным санитарно-эпидемиологическим "
+            "требованиям к помещениям детских центров и дошкольных организаций в Казахстане.\n\n"
+            "📄 Откройте презентацию ниже. После изучения можно перейти к проверке вашего помещения."
         )
+        ok = await send_document(
+            chat_id,
+            PREMISES_PDF,
+            "📄 <b>Требования СЭС к помещению детского центра</b>\nАктуально на 2026 год."
+        )
+        if not ok:
+            await send(
+                chat_id,
+                "Не удалось отправить PDF. Напишите Coach Novikova в WhatsApp: +7 701 172 13 93"
+            )
+        await send(
+            chat_id,
+            "Что хотите сделать дальше?",
+            PREMISES_MENU
+        )
+
+    elif text == "✅ Проверить моё помещение":
+        await send(
+            chat_id,
+            "✅ <b>Предварительная проверка помещения</b>\n\n"
+            "Для оценки подготовьте:\n"
+            "• город;\n"
+            "• формат: детский центр или детский сад;\n"
+            "• площадь;\n"
+            "• этаж;\n"
+            "• отдельный вход — есть/нет;\n"
+            "• количество санузлов;\n"
+            "• планируемое количество детей;\n"
+            "• будет ли питание и дневной сон.\n\n"
+            "Отправьте эти данные одним сообщением. Для юридически значимой проверки "
+            "требования нужно сверять по действующим НПА РК и документам на конкретный объект.",
+            PREMISES_MENU
+        )
+
+    elif text == "💬 Получить консультацию":
+        await send(
+            chat_id,
+            "💬 <b>Консультация Coach Novikova</b>\n\n"
+            "Можно разобрать конкретное помещение до подписания аренды или начала ремонта.\n\n"
+            "WhatsApp: +7 701 172 13 93",
+            MENU
+        )
+
+    elif text == "⬅️ Главное меню":
+        await send(chat_id, "Главное меню 👇", MENU)
 
     elif text == "📑 Документы":
         await send(
