@@ -13,6 +13,7 @@ app = FastAPI(title="CoachNovikovaBot")
 USERS: Dict[int, Dict[str, Any]] = {}
 BASE_DIR = Path(__file__).resolve().parent
 PREMISES_PDF = BASE_DIR / "assets" / "trebovaniya_SES_pomeshchenie.pdf"
+OPENING_CHECKLIST_PDF = BASE_DIR / "assets" / "checklist_otkrytie_centra.pdf"
 
 MENU = [
     ["🏢 Проверить помещение", "📑 Документы"],
@@ -213,10 +214,26 @@ async def handle_menu(chat_id: int, text: str):
         )
 
     elif text == "🗺 Мой план открытия":
-        if not s.get("answers"):
-            await send(chat_id, "Сначала пройдите диагностику — тогда план будет персональным.", MENU)
+        await send(
+            chat_id,
+            "🗺 <b>Чек-лист открытия образовательного центра</b>
+
+"
+            "Ниже — пошаговый чек-лист подготовки к открытию центра в Казахстане."
+        )
+        ok = await send_document(
+            chat_id,
+            OPENING_CHECKLIST_PDF,
+            "📄 <b>Чек-лист подготовки к открытию образовательного центра</b>"
+        )
+        if not ok:
+            await send(
+                chat_id,
+                "Не удалось отправить файл. Напишите Coach Novikova в WhatsApp: +7 701 172 13 93",
+                MENU
+            )
         else:
-            await send(chat_id, "🗺 <b>Ваш маршрут открытия</b>\n\n" + plan_text(s["answers"]), MENU)
+            await send(chat_id, "Файл готов 👇", MENU)
 
     elif text in ("💰 Финансовый калькулятор", "💰 Финансовый калькулятор открытия"):
         s.update({"mode": "finance", "finance": {}, "f": 0})
