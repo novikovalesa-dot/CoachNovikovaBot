@@ -14,6 +14,7 @@ USERS: Dict[int, Dict[str, Any]] = {}
 BASE_DIR = Path(__file__).resolve().parent
 PREMISES_PDF = BASE_DIR / "assets" / "trebovaniya_SES_pomeshchenie.pdf"
 OPENING_CHECKLIST_PDF = BASE_DIR / "assets" / "checklist_otkrytie_centra.pdf"
+MARKETING_CHECKLIST_PDF = BASE_DIR / "assets" / "checklist_marketing.pdf"
 
 MENU = [
     ["🏢 Проверить помещение", "📑 Документы"],
@@ -200,12 +201,22 @@ async def handle_menu(chat_id: int, text: str):
     elif text == "📣 Маркетинг":
         await send(
             chat_id,
-            "📣 <b>Маркетинг до открытия</b>\n\n"
-            "Не ждите окончания ремонта. Начните заранее: название и позиционирование → "
-            "оформление соцсетей → контент об открытии → WhatsApp/лид-форма → реклама → "
-            "пробные занятия → предзапись → день открытых дверей.",
-            MENU,
+            "📣 <b>Чек-лист по маркетингу</b>\n\n"
+            "Ниже — готовый чек-лист продвижения детского сада/центра."
         )
+        ok = await send_document(
+            chat_id,
+            MARKETING_CHECKLIST_PDF,
+            "📄 <b>Чек-лист продвижения детского сада/центра</b>"
+        )
+        if not ok:
+            await send(
+                chat_id,
+                "Не удалось отправить файл. Напишите Coach Novikova в WhatsApp: +7 701 172 13 93",
+                MENU
+            )
+        else:
+            await send(chat_id, "Файл готов 👇", MENU)
 
     elif text == "🗺 Мой план открытия":
         await send(
